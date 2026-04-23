@@ -246,9 +246,9 @@ class TrashGame {
 
         this.elements.currentTrash.style.opacity = '0';
 
-        const duration = 600 + (distance * 50);
+        const duration = 700 + (distance * 40);
         const startTime = Date.now();
-        const peakHeight = 100 + (distance * 15);
+        const peakHeight = 80 + (distance * 20);
 
         let hitBee = false;
 
@@ -258,8 +258,9 @@ class TrashGame {
             
             const currentX = startX - (flightPixels * progress);
             
-            const currentY = startY - (peakHeight * Math.sin(progress * Math.PI)) + 
-                             (progress * progress * (groundY - startY + peakHeight));
+            const parabolaHeight = peakHeight * 4 * progress * (1 - progress);
+            const gravityDrop = progress * progress * (groundY - startY);
+            const currentY = startY - parabolaHeight + gravityDrop;
             
             trash.style.left = currentX + 'px';
             trash.style.top = currentY + 'px';
