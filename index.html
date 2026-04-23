@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>投垃圾小游戏</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <!-- 顶部信息栏 -->
+        <div class="top-bar">
+            <div class="score-display">
+                <span class="success">✓ 成功: <span id="success-count">0</span></span>
+                <span class="failure">✗ 失败: <span id="failure-count">0</span></span>
+            </div>
+            <div class="power-bar-container">
+                <span class="power-label">力气</span>
+                <div class="power-bar">
+                    <div class="power-fill" id="power-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 左上角垃圾种类选择 -->
+        <div class="trash-selector">
+            <span class="selector-label">垃圾种类:</span>
+            <div class="trash-types">
+                <button class="trash-type active" data-type="paper">纸团</button>
+                <button class="trash-type" data-type="apple">苹果</button>
+                <button class="trash-type" data-type="stone">石头</button>
+            </div>
+        </div>
+
+        <!-- 距离显示 -->
+        <div class="distance-display" id="distance-display">
+            投掷距离: <span id="throw-distance">0</span> 米
+        </div>
+
+        <!-- 游戏场景 -->
+        <div class="game-scene">
+            <!-- 垃圾桶 -->
+            <div class="trash-can" id="trash-can">
+                <div class="trash-can-body"></div>
+                <div class="trash-can-lid"></div>
+                <div class="trash-can-size">体积: <span id="can-size">1</span></div>
+            </div>
+
+            <!-- 玩家 -->
+            <div class="player" id="player">
+                <div class="player-head"></div>
+                <div class="player-body"></div>
+                <div class="player-arm left" id="arm-left"></div>
+                <div class="player-arm right" id="arm-right">
+                    <div class="trash-item" id="current-trash">
+                        <div class="paper" id="trash-paper"></div>
+                        <div class="apple" id="trash-apple" style="display: none;"></div>
+                        <div class="stone" id="trash-stone" style="display: none;"></div>
+                    </div>
+                </div>
+                <div class="player-leg left"></div>
+                <div class="player-leg right"></div>
+            </div>
+
+            <!-- 飞行中的垃圾 -->
+            <div class="flying-trash" id="flying-trash">
+                <div class="paper" id="flying-paper"></div>
+                <div class="apple" id="flying-apple" style="display: none;"></div>
+                <div class="stone" id="flying-stone" style="display: none;"></div>
+            </div>
+
+            <!-- 小蜜蜂 -->
+            <div class="bee" id="bee">
+                <div class="bee-body"></div>
+                <div class="bee-wing left"></div>
+                <div class="bee-wing right"></div>
+                <div class="bee-stinger"></div>
+            </div>
+        </div>
+
+        <!-- 游戏结束界面 -->
+        <div class="game-over" id="game-over">
+            <h2>游戏结束</h2>
+            <p>最终得分: <span id="final-score">0</span></p>
+            <button id="restart-btn">重新开始</button>
+        </div>
+
+        <!-- 地面 -->
+        <div class="ground"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

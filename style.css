@@ -1,0 +1,580 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
+    background: linear-gradient(to bottom, #87CEEB 0%, #E0F7FA 100%);
+    height: 100vh;
+}
+
+.game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* 顶部信息栏 */
+.top-bar {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    z-index: 100;
+}
+
+.score-display {
+    display: flex;
+    gap: 30px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px 25px;
+    border-radius: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.score-display .success {
+    color: #2E7D32;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.score-display .failure {
+    color: #C62828;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.power-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.power-label {
+    font-weight: bold;
+    color: #333;
+    font-size: 16px;
+}
+
+.power-bar {
+    width: 200px;
+    height: 25px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.power-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(to right, #4CAF50, #FFEB3B, #FF5722);
+    transition: width 0.05s linear;
+    border-radius: 12px;
+}
+
+/* 垃圾种类选择器 */
+.trash-selector {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 15px 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+}
+
+.selector-label {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.trash-types {
+    display: flex;
+    gap: 10px;
+}
+
+.trash-type {
+    padding: 8px 16px;
+    border: 2px solid #ccc;
+    border-radius: 20px;
+    background: white;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.trash-type:hover {
+    border-color: #2196F3;
+    background: #E3F2FD;
+}
+
+.trash-type.active {
+    border-color: #2196F3;
+    background: #2196F3;
+    color: white;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.4);
+}
+
+/* 距离显示 */
+.distance-display {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.95);
+    padding: 10px 25px;
+    border-radius: 25px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 100;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.distance-display.show {
+    opacity: 1;
+}
+
+/* 游戏场景 */
+.game-scene {
+    position: absolute;
+    bottom: 80px;
+    left: 0;
+    right: 0;
+    height: 60%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 100px;
+}
+
+/* 垃圾桶 */
+.trash-can {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.5s ease;
+}
+
+.trash-can-body {
+    width: 80px;
+    height: 100px;
+    background: linear-gradient(to bottom, #4CAF50, #2E7D32);
+    border-radius: 0 0 10px 10px;
+    position: relative;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.trash-can-body::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    height: 15px;
+    background: linear-gradient(to bottom, #66BB6A, #43A047);
+    border-radius: 5px 5px 0 0;
+}
+
+.trash-can-lid {
+    width: 90px;
+    height: 15px;
+    background: linear-gradient(to bottom, #66BB6A, #43A047);
+    border-radius: 5px 5px 0 0;
+    margin-bottom: 5px;
+    position: relative;
+}
+
+.trash-can-lid::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 12px;
+    background: #43A047;
+    border-radius: 5px 5px 0 0;
+}
+
+.trash-can-size {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #333;
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 5px 15px;
+    border-radius: 15px;
+}
+
+/* 玩家 */
+.player {
+    position: relative;
+    width: 80px;
+    height: 160px;
+}
+
+.player-head {
+    width: 50px;
+    height: 50px;
+    background: #FFCC80;
+    border-radius: 50%;
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+}
+
+.player-head::before {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 10px;
+    width: 8px;
+    height: 8px;
+    background: #333;
+    border-radius: 50%;
+}
+
+.player-head::after {
+    content: '';
+    position: absolute;
+    top: 15px;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+    background: #333;
+    border-radius: 50%;
+}
+
+.player-body {
+    width: 60px;
+    height: 70px;
+    background: #FFC107;
+    border-radius: 10px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+}
+
+.player-arm {
+    position: absolute;
+    top: 55px;
+    width: 15px;
+    height: 50px;
+    background: #FFCC80;
+    border-radius: 8px;
+    transform-origin: top center;
+    transition: transform 0.3s ease;
+    z-index: 0;
+}
+
+.player-arm.left {
+    left: -10px;
+    transform: rotate(30deg);
+}
+
+.player-arm.right {
+    right: -10px;
+    transform: rotate(-30deg);
+}
+
+.player-arm.throw {
+    animation: throwArm 0.5s ease;
+}
+
+@keyframes throwArm {
+    0% { transform: rotate(-30deg); }
+    30% { transform: rotate(-120deg); }
+    100% { transform: rotate(-30deg); }
+}
+
+.player-leg {
+    position: absolute;
+    bottom: 0;
+    width: 20px;
+    height: 45px;
+    background: #5D4037;
+    border-radius: 0 0 5px 5px;
+}
+
+.player-leg.left {
+    left: 15px;
+}
+
+.player-leg.right {
+    right: 15px;
+}
+
+/* 垃圾物品 */
+.trash-item {
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.trash-item .paper {
+    width: 25px;
+    height: 25px;
+    background: #FAFAFA;
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    position: relative;
+}
+
+.trash-item .paper::before {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 8px;
+    height: 8px;
+    background: #E0E0E0;
+    border-radius: 50%;
+}
+
+.trash-item .apple {
+    width: 28px;
+    height: 28px;
+    background: radial-gradient(circle at 30% 30%, #FF6B6B, #E53935);
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.trash-item .apple::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 10px;
+    background: #5D4037;
+    border-radius: 2px;
+}
+
+.trash-item .apple::after {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 55%;
+    width: 10px;
+    height: 8px;
+    background: #66BB6A;
+    border-radius: 50% 0 50% 50%;
+    transform: rotate(45deg);
+}
+
+.trash-item .stone {
+    width: 26px;
+    height: 26px;
+    background: linear-gradient(135deg, #9E9E9E, #757575, #616161);
+    border-radius: 40% 60% 70% 30% / 40% 50% 60% 60%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+/* 飞行中的垃圾 */
+.flying-trash {
+    position: absolute;
+    opacity: 0;
+    z-index: 50;
+}
+
+.flying-trash .paper {
+    width: 25px;
+    height: 25px;
+    background: #FAFAFA;
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.flying-trash .apple {
+    width: 28px;
+    height: 28px;
+    background: radial-gradient(circle at 30% 30%, #FF6B6B, #E53935);
+    border-radius: 50%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.flying-trash .stone {
+    width: 26px;
+    height: 26px;
+    background: linear-gradient(135deg, #9E9E9E, #757575, #616161);
+    border-radius: 40% 60% 70% 30% / 40% 50% 60% 60%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+/* 小蜜蜂 */
+.bee {
+    position: absolute;
+    width: 50px;
+    height: 40px;
+    right: -60px;
+    top: 40%;
+    opacity: 0;
+    z-index: 60;
+}
+
+.bee.active {
+    opacity: 1;
+    animation: beeFly 10s linear forwards;
+}
+
+@keyframes beeFly {
+    0% {
+        right: -60px;
+    }
+    10% {
+        right: 200px;
+    }
+    90% {
+        right: 200px;
+    }
+    100% {
+        right: calc(100vw + 60px);
+    }
+}
+
+.bee-body {
+    position: absolute;
+    width: 40px;
+    height: 30px;
+    background: linear-gradient(
+        to bottom,
+        #FFC107 0%, #FFC107 20%,
+        #333 20%, #333 35%,
+        #FFC107 35%, #FFC107 50%,
+        #333 50%, #333 65%,
+        #FFC107 65%, #FFC107 80%,
+        #333 80%, #333 100%
+    );
+    border-radius: 50%;
+    left: 5px;
+    top: 5px;
+}
+
+.bee-wing {
+    position: absolute;
+    width: 25px;
+    height: 15px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    animation: wingFlap 0.1s ease-in-out infinite alternate;
+}
+
+.bee-wing.left {
+    top: -8px;
+    left: 5px;
+    transform: rotate(-20deg);
+}
+
+.bee-wing.right {
+    top: -8px;
+    right: 5px;
+    transform: rotate(20deg);
+}
+
+@keyframes wingFlap {
+    0% { transform: rotate(-20deg); }
+    100% { transform: rotate(-40deg); }
+}
+
+.bee-stinger {
+    position: absolute;
+    bottom: 5px;
+    left: -8px;
+    width: 15px;
+    height: 6px;
+    background: #333;
+    clip-path: polygon(0 50%, 100% 0, 100% 100%);
+}
+
+/* 地面 */
+.ground {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(to bottom, #8BC34A, #689F38);
+    border-top: 3px solid #558B2F;
+}
+
+/* 游戏结束界面 */
+.game-over {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+}
+
+.game-over.show {
+    display: flex;
+}
+
+.game-over h2 {
+    font-size: 48px;
+    color: white;
+    margin-bottom: 20px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.game-over p {
+    font-size: 24px;
+    color: #FFD54F;
+    margin-bottom: 30px;
+}
+
+#restart-btn {
+    padding: 15px 40px;
+    font-size: 20px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+}
+
+#restart-btn:hover {
+    background: #66BB6A;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.5);
+}
+
+/* 提示文字 */
+.hint {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 16px;
+    color: #333;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 10px 25px;
+    border-radius: 25px;
+    z-index: 50;
+}
