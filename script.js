@@ -13,6 +13,7 @@ class TrashGame {
             failureCount: document.getElementById('failure-count'),
             canSize: document.getElementById('can-size'),
             trashCan: document.getElementById('trash-can'),
+            trashCanWrapper: document.getElementById('trash-can-wrapper'),
             player: document.getElementById('player'),
             armRight: document.getElementById('arm-right'),
             currentTrash: document.getElementById('current-trash'),
@@ -24,12 +25,15 @@ class TrashGame {
             flyingApple: document.getElementById('flying-apple'),
             flyingStone: document.getElementById('flying-stone'),
             bee: document.getElementById('bee'),
+            beeStinger: document.getElementById('bee-stinger'),
+            stingerProjectile: document.getElementById('stinger-projectile'),
             distanceDisplay: document.getElementById('distance-display'),
             throwDistance: document.getElementById('throw-distance'),
             gameOver: document.getElementById('game-over'),
             finalScore: document.getElementById('final-score'),
             restartBtn: document.getElementById('restart-btn'),
-            trashTypes: document.querySelectorAll('.trash-type')
+            trashTypes: document.querySelectorAll('.trash-type'),
+            trashSelector: document.querySelector('.trash-selector')
         };
     }
 
@@ -46,14 +50,16 @@ class TrashGame {
             maxPower: 100,
             isGameOver: false,
             isBeeActive: false,
+            isBeeAttacking: false,
             beeStartTime: 0,
-            beeDuration: 10000,
+            beeDuration: 12000,
             trashDistanceRatio: {
                 paper: 2,
                 apple: 4,
                 stone: 8
             },
             targetDistance: 9,
+            maxThrowDistance: 18,
             gameSceneWidth: 0
         };
     }
@@ -65,7 +71,13 @@ class TrashGame {
         document.addEventListener('touchend', (e) => this.handleTouchEnd(e));
 
         this.elements.trashTypes.forEach(btn => {
-            btn.addEventListener('click', () => this.switchTrashType(btn.dataset.type));
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.switchTrashType(btn.dataset.type);
+            });
+            btn.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+            });
         });
 
         this.elements.restartBtn.addEventListener('click', () => this.restartGame());
@@ -84,6 +96,10 @@ class TrashGame {
         if (this.state.isGameOver || this.state.isThrowing) return;
         if (e.button !== 0) return;
         
+        if (this.elements.trashSelector && this.elements.trashSelector.contains(e.target)) {
+            return;
+        }
+
         this.startCharging();
     }
 
@@ -96,8 +112,13 @@ class TrashGame {
 
     handleTouchStart(e) {
         if (this.state.isGameOver || this.state.isThrowing) return;
-        e.preventDefault();
         
+        const touch = e.touches[0];
+        if (this.elements.trashSelector && this.elements.trashSelector.contains(document.elementFromPoint(touch.clientX, touch.clientY))) {
+            return;
+        }
+
+        e.preventDefault();
         this.startCharging();
     }
 
@@ -117,8 +138,10 @@ class TrashGame {
     stopChargingAndThrow() {
         this.state.isCharging = false;
         
-        if (this.state.power > 0) {
-            this.throwTrash();
+        const currentPower = this.state.power;
+        
+        if (currentPower > 0) {
+            this.throwTrash(currentPower);
         }
         
         this.state.power = 0;
@@ -167,20 +190,20 @@ class TrashGame {
         this.elements.flyingStone.style.display = type === 'stone' ? 'block' : 'none';
     }
 
-    throwTrash() {
+    throwTrash(power) {
         this.state.isThrowing = true;
 
         this.elements.armRight.classList.add('throw');
 
         setTimeout(() => {
-            this.launchTrash();
+            this.launchTrash(power);
         }, 150);
     }
 
-    launchTrash() {
+    launchTrash(power) {
         const ratio = this.state.trashDistanceRatio[this.state.currentTrashType];
-        const powerFactor = this.state.power / this.state.maxPower;
-        const throwDistance = (powerFactor * 10) * (ratio / 4);
+        const powerFactor = power / this.state.maxPower;
+        const throwDistance = powerFactor * this.state.maxThrowDistance * (ratio / 4);
 
         this.showDistance(throwDistance);
 
@@ -193,13 +216,12 @@ class TrashGame {
 
         setTimeout(() => {
             this.elements.distanceDisplay.classList.remove('show');
-        }, 2000);
+        }, 2500);
     }
 
     animateTrashFlight(distance) {
         this.updateSceneWidth();
         
-        const sceneWidth = this.state.gameSceneWidth;
         const player = this.elements.player;
         const trashCan = this.elements.trashCan;
         
@@ -209,10 +231,10 @@ class TrashGame {
         const startX = playerRect.left + playerRect.width / 2 - 13;
         const startY = playerRect.top + 50;
         
-        const pixelsPerMeter = (canRect.left - playerRect.right) / this.state.targetDistance;
+        const targetPixelDistance = Math.abs(canRect.left - (playerRect.left + playerRect.width));
+        const pixelsPerMeter = targetPixelDistance / this.state.targetDistance;
         const flightPixels = distance * pixelsPerMeter;
         
-        const endX = startX - flightPixels;
         const groundY = window.innerHeight - 80;
         
         const trash = this.elements.flyingTrash;
@@ -224,8 +246,11 @@ class TrashGame {
 
         this.elements.currentTrash.style.opacity = '0';
 
-        const duration = 800;
+        const duration = 600 + (distance * 50);
         const startTime = Date.now();
+        const peakHeight = 100 + (distance * 15);
+
+        let hitBee = false;
 
         const animate = () => {
             const elapsed = Date.now() - startTime;
@@ -233,20 +258,33 @@ class TrashGame {
             
             const currentX = startX - (flightPixels * progress);
             
-            const peakHeight = 200;
             const currentY = startY - (peakHeight * Math.sin(progress * Math.PI)) + 
                              (progress * progress * (groundY - startY + peakHeight));
             
             trash.style.left = currentX + 'px';
             trash.style.top = currentY + 'px';
             
-            const rotation = progress * 720;
+            const rotation = progress * 1080;
             trash.style.transform = `rotate(${rotation}deg)`;
+
+            if (this.state.isBeeActive && !hitBee) {
+                const beeRect = this.elements.bee.getBoundingClientRect();
+                const trashRect = trash.getBoundingClientRect();
+                
+                if (this.checkCollision(trashRect, beeRect)) {
+                    hitBee = true;
+                    this.hitBee();
+                }
+            }
 
             if (progress < 1) {
                 requestAnimationFrame(animate);
             } else {
-                this.checkHit(distance, endX, currentY);
+                if (!hitBee) {
+                    this.checkHit(distance, currentX, currentY);
+                } else {
+                    this.finishThrow();
+                }
             }
         };
 
@@ -254,47 +292,32 @@ class TrashGame {
     }
 
     checkHit(distance, endX, endY) {
-        const scene = document.querySelector('.game-scene');
         const canRect = this.elements.trashCan.getBoundingClientRect();
+        const trashRect = this.elements.flyingTrash.getBoundingClientRect();
         
-        const tolerance = 1.5 + (this.state.canSize - 1) * 0.8;
-        
+        const tolerance = 1.2 + (this.state.canSize - 1) * 0.5;
         const distanceDiff = Math.abs(distance - this.state.targetDistance);
         
         let hit = false;
         
         if (distanceDiff <= tolerance) {
-            const trashRect = this.elements.flyingTrash.getBoundingClientRect();
-            
             const trashCenterX = trashRect.left + trashRect.width / 2;
             const trashCenterY = trashRect.top + trashRect.height / 2;
             
             const canCenterX = canRect.left + canRect.width / 2;
-            const canTopY = canRect.top;
-            const canBottomY = canRect.bottom;
-            const canLeftX = canRect.left;
-            const canRightX = canRect.right;
+            const canTopY = canRect.top - 20;
+            const canBottomY = canRect.bottom + 20;
             
             const sizeMultiplier = 1 + (this.state.canSize - 1) * 0.2;
-            const expandedLeft = canCenterX - (canRect.width / 2) * sizeMultiplier;
-            const expandedRight = canCenterX + (canRect.width / 2) * sizeMultiplier;
-            const expandedTop = canTopY - 20;
-            const expandedBottom = canBottomY + 20;
+            const canHalfWidth = (canRect.width / 2) * sizeMultiplier;
+            const expandedLeft = canCenterX - canHalfWidth - 10;
+            const expandedRight = canCenterX + canHalfWidth + 10;
             
             if (trashCenterX >= expandedLeft && 
                 trashCenterX <= expandedRight && 
-                trashCenterY >= expandedTop && 
-                trashCenterY <= expandedBottom) {
+                trashCenterY >= canTopY && 
+                trashCenterY <= canBottomY) {
                 hit = true;
-            }
-        }
-
-        if (this.state.isBeeActive) {
-            const beeRect = this.elements.bee.getBoundingClientRect();
-            const trashRect = this.elements.flyingTrash.getBoundingClientRect();
-            
-            if (this.checkCollision(trashRect, beeRect)) {
-                this.hitBee();
             }
         }
 
@@ -347,22 +370,104 @@ class TrashGame {
 
     spawnBee() {
         this.state.isBeeActive = true;
+        this.state.isBeeAttacking = true;
         this.state.beeStartTime = Date.now();
         
-        this.elements.bee.classList.add('active');
+        const bee = this.elements.bee;
+        const player = this.elements.player;
+        const playerRect = player.getBoundingClientRect();
+        const beeRect = bee.getBoundingClientRect();
+        
+        bee.style.opacity = '1';
+        bee.classList.remove('active', 'attacking', 'flying-away');
+        bee.style.right = '-60px';
+        bee.style.top = '40%';
+        bee.style.transition = 'none';
+        
+        void bee.offsetWidth;
+        
+        bee.classList.add('attacking');
+        
+        setTimeout(() => {
+            if (this.state.isBeeActive && !this.state.isGameOver) {
+                this.shootStinger();
+            }
+        }, 1500);
+    }
 
+    shootStinger() {
+        if (!this.state.isBeeActive || this.state.isGameOver) return;
+        
+        const stinger = this.elements.stingerProjectile;
+        const bee = this.elements.bee;
+        const player = this.elements.player;
+        
+        const beeRect = bee.getBoundingClientRect();
+        const playerRect = player.getBoundingClientRect();
+        
+        stinger.style.display = 'block';
+        stinger.style.left = (beeRect.left + 10) + 'px';
+        stinger.style.top = (beeRect.top + 20) + 'px';
+        stinger.style.opacity = '1';
+        stinger.style.transition = 'none';
+        
+        void stinger.offsetWidth;
+        
+        const targetX = playerRect.left + playerRect.width / 2;
+        const targetY = playerRect.top + playerRect.height / 2;
+        
+        stinger.style.transition = 'all 0.5s ease-in';
+        stinger.style.left = targetX + 'px';
+        stinger.style.top = targetY + 'px';
+        
+        setTimeout(() => {
+            if (this.state.isBeeActive && !this.state.isGameOver) {
+                player.classList.add('hurt');
+                
+                setTimeout(() => {
+                    player.classList.remove('hurt');
+                }, 500);
+                
+                this.startBeeFlyingAway();
+            }
+            
+            stinger.style.opacity = '0';
+            setTimeout(() => {
+                stinger.style.display = 'none';
+            }, 300);
+        }, 500);
+    }
+
+    startBeeFlyingAway() {
+        if (!this.state.isBeeActive) return;
+        
+        this.state.isBeeAttacking = false;
+        const bee = this.elements.bee;
+        
+        bee.classList.remove('attacking');
+        bee.classList.add('flying-away');
+        
         setTimeout(() => {
             if (this.state.isBeeActive && !this.state.isGameOver) {
                 this.gameOver();
             }
-        }, this.state.beeDuration);
+        }, 6000);
     }
 
     hitBee() {
         this.state.isBeeActive = false;
+        this.state.isBeeAttacking = false;
         this.state.failureCount = 0;
         this.elements.failureCount.textContent = '0';
-        this.elements.bee.classList.remove('active');
+        
+        const bee = this.elements.bee;
+        bee.classList.remove('active', 'attacking', 'flying-away');
+        bee.style.opacity = '0';
+        bee.style.transition = 'opacity 0.3s ease';
+        
+        const stinger = this.elements.stingerProjectile;
+        stinger.style.opacity = '0';
+        stinger.style.display = 'none';
     }
 
     finishThrow() {
@@ -388,8 +493,11 @@ class TrashGame {
         this.elements.failureCount.textContent = '0';
         this.elements.canSize.textContent = '1';
         this.elements.gameOver.classList.remove('show');
-        this.elements.bee.classList.remove('active');
+        this.elements.bee.classList.remove('active', 'attacking', 'flying-away');
+        this.elements.bee.style.opacity = '0';
         this.elements.trashCan.style.transform = 'scale(1)';
+        this.elements.stingerProjectile.style.display = 'none';
+        this.elements.stingerProjectile.style.opacity = '0';
         
         this.switchTrashType('paper');
     }
