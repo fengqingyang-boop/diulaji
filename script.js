@@ -242,101 +242,105 @@ class TrashGame {
 
         this.elements.currentTrash.style.opacity = '0';
 
-        const duration = 800 + (distance * 50);
+        const duration = 700 + (distance * 40);
         const startTime = Date.now();
         
-        const maxUpwardHeight = 120 + (distance * 25);
+        const peakHeight = 80 + (distance * 20);
         const groundY = window.innerHeight - 80;
-        const totalDropDistance = groundY - startY + maxUpwardHeight;
 
         let hitBee = false;
+        let hitCan = false;
+        let animationFinished = false;
+
+        const sizeMultiplier = 1 + (this.state.canSize - 1) * 0.2;
+        const canHalfWidth = (canRect.width / 2) * sizeMultiplier;
+        const canHalfHeight = (canRect.height / 2) * sizeMultiplier;
+        const canCenterX = canRect.left + canRect.width / 2;
+        const canCenterY = canRect.top + canRect.height / 2;
+
+        const checkCanCollision = (trashRect) => {
+            const trashCenterX = trashRect.left + trashRect.width / 2;
+            const trashCenterY = trashRect.top + trashRect.height / 2;
+            
+            const expandedLeft = canCenterX - canHalfWidth - 15;
+            const expandedRight = canCenterX + canHalfWidth + 15;
+            const expandedTop = canCenterY - canHalfHeight - 30;
+            const expandedBottom = canCenterY + canHalfHeight + 10;
+            
+            return (trashCenterX >= expandedLeft && 
+                    trashCenterX <= expandedRight && 
+                    trashCenterY >= expandedTop && 
+                    trashCenterY <= expandedBottom);
+        };
+
+        const quadraticParabola = (progress, start, peak, end) => {
+            const midProgress = 0.4;
+            
+            if (progress <= midProgress) {
+                const t = progress / midProgress;
+                return start + (peak - start) * Math.sin(t * Math.PI / 2);
+            } else {
+                const t = (progress - midProgress) / (1 - midProgress);
+                return peak + (end - peak) * t * t;
+            }
+        };
 
         const animate = () => {
+            if (hitBee || hitCan || animationFinished) return;
+
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
             
-            const currentX = startX - (flightPixels * progress);
+            const endX = startX - flightPixels;
+            const peakX = startX - flightPixels * 0.4;
+            const peakY = startY - peakHeight;
+            const endY = groundY;
             
-            let currentY;
+            const currentX = quadraticParabola(progress, startX, peakX, endX);
+            const currentY = quadraticParabola(progress, startY, peakY, endY);
             
-            if (progress < 0.4) {
-                const upProgress = progress / 0.4;
-                const upHeight = maxUpwardHeight * Math.sin(upProgress * Math.PI / 2);
-                currentY = startY - upHeight;
-            } else {
-                const downProgress = (progress - 0.4) / 0.6;
-                const peakY = startY - maxUpwardHeight;
-                const dropDistance = totalDropDistance * downProgress * downProgress;
-                currentY = peakY + dropDistance;
-            }
+            const clampedY = Math.min(currentY, groundY);
             
             trash.style.left = currentX + 'px';
-            trash.style.top = Math.min(currentY, groundY) + 'px';
+            trash.style.top = clampedY + 'px';
             
-            const rotation = progress * 900;
+            const rotation = progress * 1080;
             trash.style.transform = `rotate(${rotation}deg)`;
+
+            const trashRect = trash.getBoundingClientRect();
 
             if (this.state.isBeeActive && !hitBee) {
                 const beeRect = this.elements.bee.getBoundingClientRect();
-                const trashRect = trash.getBoundingClientRect();
                 
                 if (this.checkCollision(trashRect, beeRect)) {
                     hitBee = true;
                     this.hitBee();
+                    this.finishThrow();
+                    return;
+                }
+            }
+
+            if (!hitCan) {
+                if (checkCanCollision(trashRect)) {
+                    hitCan = true;
+                    this.handleSuccess();
+                    this.finishThrow();
+                    return;
                 }
             }
 
             if (progress < 1) {
                 requestAnimationFrame(animate);
             } else {
-                if (!hitBee) {
-                    this.checkHit(distance, currentX, Math.min(currentY, groundY));
-                } else {
-                    this.finishThrow();
+                animationFinished = true;
+                if (!hitCan && !hitBee) {
+                    this.handleFailure();
                 }
+                this.finishThrow();
             }
         };
 
         animate();
-    }
-
-    checkHit(distance, endX, endY) {
-        const canRect = this.elements.trashCan.getBoundingClientRect();
-        const trashRect = this.elements.flyingTrash.getBoundingClientRect();
-        
-        const tolerance = 1.2 + (this.state.canSize - 1) * 0.5;
-        const distanceDiff = Math.abs(distance - this.state.targetDistance);
-        
-        let hit = false;
-        
-        if (distanceDiff <= tolerance) {
-            const trashCenterX = trashRect.left + trashRect.width / 2;
-            const trashCenterY = trashRect.top + trashRect.height / 2;
-            
-            const canCenterX = canRect.left + canRect.width / 2;
-            const canTopY = canRect.top - 20;
-            const canBottomY = canRect.bottom + 20;
-            
-            const sizeMultiplier = 1 + (this.state.canSize - 1) * 0.2;
-            const canHalfWidth = (canRect.width / 2) * sizeMultiplier;
-            const expandedLeft = canCenterX - canHalfWidth - 10;
-            const expandedRight = canCenterX + canHalfWidth + 10;
-            
-            if (trashCenterX >= expandedLeft && 
-                trashCenterX <= expandedRight && 
-                trashCenterY >= canTopY && 
-                trashCenterY <= canBottomY) {
-                hit = true;
-            }
-        }
-
-        if (hit) {
-            this.handleSuccess();
-        } else {
-            this.handleFailure();
-        }
-
-        this.finishThrow();
     }
 
     checkCollision(rect1, rect2) {
