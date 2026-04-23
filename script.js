@@ -220,8 +220,6 @@ class TrashGame {
     }
 
     animateTrashFlight(distance) {
-        this.updateSceneWidth();
-        
         const player = this.elements.player;
         const trashCan = this.elements.trashCan;
         
@@ -235,8 +233,6 @@ class TrashGame {
         const pixelsPerMeter = targetPixelDistance / this.state.targetDistance;
         const flightPixels = distance * pixelsPerMeter;
         
-        const groundY = window.innerHeight - 80;
-        
         const trash = this.elements.flyingTrash;
         trash.style.opacity = '1';
         trash.style.left = startX + 'px';
@@ -246,9 +242,12 @@ class TrashGame {
 
         this.elements.currentTrash.style.opacity = '0';
 
-        const duration = 700 + (distance * 40);
+        const duration = 800 + (distance * 50);
         const startTime = Date.now();
-        const peakHeight = 80 + (distance * 20);
+        
+        const maxUpwardHeight = 120 + (distance * 25);
+        const groundY = window.innerHeight - 80;
+        const totalDropDistance = groundY - startY + maxUpwardHeight;
 
         let hitBee = false;
 
@@ -258,14 +257,23 @@ class TrashGame {
             
             const currentX = startX - (flightPixels * progress);
             
-            const parabolaHeight = peakHeight * 4 * progress * (1 - progress);
-            const gravityDrop = progress * progress * (groundY - startY);
-            const currentY = startY - parabolaHeight + gravityDrop;
+            let currentY;
+            
+            if (progress < 0.4) {
+                const upProgress = progress / 0.4;
+                const upHeight = maxUpwardHeight * Math.sin(upProgress * Math.PI / 2);
+                currentY = startY - upHeight;
+            } else {
+                const downProgress = (progress - 0.4) / 0.6;
+                const peakY = startY - maxUpwardHeight;
+                const dropDistance = totalDropDistance * downProgress * downProgress;
+                currentY = peakY + dropDistance;
+            }
             
             trash.style.left = currentX + 'px';
-            trash.style.top = currentY + 'px';
+            trash.style.top = Math.min(currentY, groundY) + 'px';
             
-            const rotation = progress * 1080;
+            const rotation = progress * 900;
             trash.style.transform = `rotate(${rotation}deg)`;
 
             if (this.state.isBeeActive && !hitBee) {
@@ -282,7 +290,7 @@ class TrashGame {
                 requestAnimationFrame(animate);
             } else {
                 if (!hitBee) {
-                    this.checkHit(distance, currentX, currentY);
+                    this.checkHit(distance, currentX, Math.min(currentY, groundY));
                 } else {
                     this.finishThrow();
                 }
